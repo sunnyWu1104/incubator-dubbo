@@ -36,6 +36,7 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.support.AbstractApplicationContext;
 
+import javax.annotation.PostConstruct;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +44,9 @@ import java.util.Map;
 
 /**
  * ServiceFactoryBean
+ *
+ * 实现了ApplicationListener,所以也是一个监听器。在spring容器加载完成后触发contextrefreshedevent事件，这个事件会被实现了ApplicationListener接口的类监听到，执行对应的onApplicationEvent函数
+ *
  *
  * @export
  */
@@ -54,6 +58,7 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
 
     private final transient Service service;
 
+    // 定义要监听的spring上下文
     private transient ApplicationContext applicationContext;
 
     private transient String beanName;
@@ -114,12 +119,22 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
         return service;
     }
 
+    /**
+     * 在构造bean的时候注入Spring的上下文对象，以便通过Spring上下文对象的publishEvent方法来触发onApplicationEvent事件
+     *
+     * 下面的afterPropertiesSet会先调用，然后Exported = true，这里就会被跳过
+     *
+     * 这里的监听应该是旧版本的时候使用的，之后用该用的是afterPropertiesSet
+     *
+     * @param event
+     */
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
         if (isDelay() && !isExported() && !isUnexported()) {
             if (logger.isInfoEnabled()) {
                 logger.info("The service ready on spring started. service: " + getInterface());
             }
+            // 实现服务的发布处理
             export();
         }
     }
@@ -133,10 +148,18 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
         return supportedApplicationListener && (delay == null || delay == -1);
     }
 
+    /**
+     * 在每个Dubbo Service Bean实例化后，在afterPropertiesSet()方法中进行所有Dubbo服务注册需要的操作
+     *
+     * 和spring的@PostConstruct一样都是初始化
+     *
+     * @throws Exception
+     */
     @Override
     @SuppressWarnings({"unchecked", "deprecation"})
     public void afterPropertiesSet() throws Exception {
         if (getProvider() == null) {
+            // 获取IOC容器里的所有provider
             Map<String, ProviderConfig> providerConfigMap = applicationContext == null ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ProviderConfig.class, false, false);
             if (providerConfigMap != null && providerConfigMap.size() > 0) {
                 Map<String, ProtocolConfig> protocolConfigMap = applicationContext == null ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ProtocolConfig.class, false, false);
@@ -149,6 +172,7 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
                         }
                     }
                     if (!providerConfigs.isEmpty()) {
+                        // 关联所有providers
                         setProviders(providerConfigs);
                     }
                 } else {
@@ -261,6 +285,7 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
             }
         }
         if (!isDelay()) {
+            // 暴露服务
             export();
         }
     }

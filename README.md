@@ -1,27 +1,28 @@
-# Apache Dubbo (incubating) Project
+# Dubbo源码学习计划
 
-[![Build Status](https://travis-ci.org/apache/incubator-dubbo.svg?branch=master)](https://travis-ci.org/apache/incubator-dubbo) 
-[![codecov](https://codecov.io/gh/apache/incubator-dubbo/branch/master/graph/badge.svg)](https://codecov.io/gh/apache/incubator-dubbo)
-[![Gitter](https://badges.gitter.im/alibaba/dubbo.svg)](https://gitter.im/alibaba/dubbo?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
-![license](https://img.shields.io/github/license/alibaba/dubbo.svg)
-![maven](https://img.shields.io/maven-central/v/com.alibaba/dubbo.svg)
+### Dubbo 核心流程源码实现
 
-Apache Dubbo (incubating) is a high-performance, java based RPC framework open-sourced by Alibaba. Please visit [dubbo official site ](http://dubbo.incubator.apache.org) for quick start and documentations, as well as [Wiki](https://github.com/apache/incubator-dubbo/wiki) for news, FAQ, and release notes.
+#### 1. [Dubbo SPI机制](https://blog.csdn.net/qiangcai/article/details/77750541) 
+#### 2. [Spring Bean注册](http://veryjj.github.io/2018/04/22/Dubbo%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90-Spring-Bean%E6%B3%A8%E5%86%8C/)
+#### 3. Provider 注册、暴露服务、处理请求 / Consumer注册、订阅服务、调用实现
 
-We are now collecting dubbo user info in order to help us to improve dubbo better, pls. kindly help us by providing yours on [issue#1012: Wanted: who's using dubbo](https://github.com/apache/incubator-dubbo/issues/1012), thanks :)
-
-## Links
-
-* [Side projects](https://github.com/apache/incubator-dubbo)
-    * [Dubbo Spring Boot](https://github.com/apache/incubator-dubbo-spring-boot-project) - Spring Boot Project for Dubbo.
-    * [Dubbo ops](https://github.com/apache/incubator-dubbo-ops) - The reference implementation for dubbo ops(dubbo-admin,dubbo-monitor-simple,dubbo-registry-simple,etc.).
-    * [Dubbo website](https://github.com/apache/incubator-dubbo-website) - Apache Dubbo (incubating) documents
-    * [Dubbo rpc-jsonrpc](https://github.com/apache/incubator-dubbo-rpc-jsonrpc) - The Json rpc module of Apache Dubbo (incubating) project
-    * [Dubbo feature-test](https://github.com/apache/incubator-dubbo-feature-test) - Apache Dubbo (incubating) feature test
-    * [Dubbo docs](https://github.com/apache/incubator-dubbo-docs) - Apache Dubbo (incubating) documentation  
-* [Developer Mailing list](https://github.com/apache/incubator-dubbo/issues/1393) - Any questions or suggestions? [Subscribe](https://github.com/apache/incubator-dubbo/issues/1393) to (dev@dubbo.incubator.apache.org) to discuss with us.
-* [Gitter channel](https://gitter.im/alibaba/dubbo) - Online chat room with Dubbo developers.
-* [Dubbo user manual(English)](http://dubbo.apache.org/books/dubbo-user-book-en/) or [Dubbo用户手册(中文)](http://dubbo.apache.org/books/dubbo-user-book/) - Describe how to use Dubbo and all features of Dubbo concretely.
-* [Dubbo developer guide(English)](http://dubbo.apache.org/books/dubbo-dev-book-en/) or [Dubbo开发手册(中文)](http://dubbo.apache.org/books/dubbo-dev-book/) - Detailly introduce the design principal, extension mechanisms, code conventions, version control and building project, etc.
-* [Dubbo admin manual(English)](http://dubbo.apache.org/books/dubbo-admin-book-en/) or [Dubbo管理手册(中文)](http://dubbo.apache.org/books/dubbo-admin-book/) - Describe how to use Dubbo registry and admin-console.
-
+```
+参考：
+1. https://blog.csdn.net/qiangcai/article/details/73992080
+2. https://veryjj.github.io/2018/05/02/Dubbo%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90-Provider%E6%9A%B4%E9%9C%B2%E6%9C%8D%E5%8A%A1/
+```
+```
+疑问：afterPropertiesSet和onApplicationEvent的区别？执行顺序又是什么？
+    
+    这里的监听应该是旧版本的时候使用的，之后用该用的是afterPropertiesSet
+    
+    Spring启动，constructor,@PostConstruct,afterPropertiesSet,onApplicationEvent执行顺序如下：
+    
+    1. constructor
+    2. @postConstruct
+    3. afterPropertiesSet
+    4. onApplicationEvent(每一次bean的注入，spring都会被刷新，方法也会被调用)
+        
+```
+        
+#### 4. Dubbo Filter机制

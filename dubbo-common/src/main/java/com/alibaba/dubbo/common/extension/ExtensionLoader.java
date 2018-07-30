@@ -45,6 +45,9 @@ import java.util.regex.Pattern;
 
 /**
  * Load dubbo extensions
+ *
+ * 有点类似JDK中的ServiceLoader类，也是用来加载指定路径下的接口实现
+ *
  * <ul>
  * <li>auto inject dependency extension </li>
  * <li>auto wrap extension in wrapper </li>
@@ -95,7 +98,7 @@ public class ExtensionLoader<T> {
 
     private ExtensionLoader(Class<?> type) {
         this.type = type;
-        objectFactory = (type == ExtensionFactory.class ? null : ExtensionLoader.getExtensionLoader(ExtensionFactory.class).getAdaptiveExtension());
+        objectFactory = (type == ExtensionFactory.class ? null : ExtensionLoader.getExtensionLoader(ExtensionFactory.class).getAdaptiveExtension()); // 动态生成接口或者代理类
     }
 
     private static <T> boolean withExtensionAnnotation(Class<T> type) {
@@ -114,9 +117,12 @@ public class ExtensionLoader<T> {
                     ") is not extension, because WITHOUT @" + SPI.class.getSimpleName() + " Annotation!");
         }
 
+        // 根据接口对象取ExtensionLoader类
         ExtensionLoader<T> loader = (ExtensionLoader<T>) EXTENSION_LOADERS.get(type);
         if (loader == null) {
+            // 如果为空保存接口类对应的 新建的ExtensionLoader对象
             EXTENSION_LOADERS.putIfAbsent(type, new ExtensionLoader<T>(type));
+            // TODO: 2018/7/25 为啥不直接返回，而去重新get
             loader = (ExtensionLoader<T>) EXTENSION_LOADERS.get(type);
         }
         return loader;
@@ -288,6 +294,9 @@ public class ExtensionLoader<T> {
     /**
      * Find the extension with the given name. If the specified name is not found, then {@link IllegalStateException}
      * will be thrown.
+     *
+     * 返回指定名字的扩展。如果指定名字的扩展不存在，则抛异常 {@link IllegalStateException}
+     *
      */
     @SuppressWarnings("unchecked")
     public T getExtension(String name) {
@@ -296,16 +305,19 @@ public class ExtensionLoader<T> {
         if ("true".equals(name)) {
             return getDefaultExtension();
         }
+        // 根据传入的name参数确定接口的具体实现类
         Holder<Object> holder = cachedInstances.get(name);
         if (holder == null) {
             cachedInstances.putIfAbsent(name, new Holder<Object>());
             holder = cachedInstances.get(name);
         }
+        // 判断接口实现类是否存在
         Object instance = holder.get();
         if (instance == null) {
             synchronized (holder) {
                 instance = holder.get();
                 if (instance == null) {
+                    // 不存在那么创建一个接口实现类
                     instance = createExtension(name);
                     holder.set(instance);
                 }
@@ -432,6 +444,10 @@ public class ExtensionLoader<T> {
         }
     }
 
+    /**
+     * 动态生成接口或者代理类
+     * @return
+     */
     @SuppressWarnings("unchecked")
     public T getAdaptiveExtension() {
         Object instance = cachedAdaptiveInstance.get();
@@ -508,6 +524,11 @@ public class ExtensionLoader<T> {
         }
     }
 
+    /**
+     * 利用反射机制判断接口代理类中是否有需要注入的属性
+     * @param instance
+     * @return
+     */
     private T injectExtension(T instance) {
         try {
             if (objectFactory != null) {
@@ -552,6 +573,7 @@ public class ExtensionLoader<T> {
             synchronized (cachedClasses) {
                 classes = cachedClasses.get();
                 if (classes == null) {
+                    // 获取所有的接口实现
                     classes = loadExtensionClasses();
                     cachedClasses.set(classes);
                 }
@@ -560,6 +582,11 @@ public class ExtensionLoader<T> {
         return classes;
     }
 
+    /**
+     * 通过SPI加载接口对应的所有实现类
+     * 此方法已经getExtensionClasses方法同步过
+     * @return
+     */
     // synchronized in getExtensionClasses
     private Map<String, Class<?>> loadExtensionClasses() {
         final SPI defaultAnnotation = type.getAnnotation(SPI.class);
@@ -716,6 +743,10 @@ public class ExtensionLoader<T> {
         return extension.value();
     }
 
+    /**
+     * 获取实例对象
+     * @return
+     */
     @SuppressWarnings("unchecked")
     private T createAdaptiveExtension() {
         try {
@@ -726,6 +757,7 @@ public class ExtensionLoader<T> {
     }
 
     private Class<?> getAdaptiveExtensionClass() {
+        // 通过SPI加载接口延伸的所有实现到map中保存
         getExtensionClasses();
         if (cachedAdaptiveClass != null) {
             return cachedAdaptiveClass;
@@ -733,9 +765,16 @@ public class ExtensionLoader<T> {
         return cachedAdaptiveClass = createAdaptiveExtensionClass();
     }
 
+    /**
+     * 动态生成SPI接口的代理实现class对象
+     * @return
+     */
     private Class<?> createAdaptiveExtensionClass() {
+        // 生成类文件code
         String code = createAdaptiveExtensionClassCode();
+        // 获取类加载器
         ClassLoader classLoader = findClassLoader();
+        // 动态织入
         com.alibaba.dubbo.common.compiler.Compiler compiler = ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.common.compiler.Compiler.class).getAdaptiveExtension();
         return compiler.compile(code, classLoader);
     }

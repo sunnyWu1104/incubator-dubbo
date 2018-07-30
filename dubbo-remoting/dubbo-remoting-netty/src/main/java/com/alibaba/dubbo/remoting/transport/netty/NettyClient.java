@@ -59,6 +59,10 @@ public class NettyClient extends AbstractClient {
         super(url, wrapChannelHandler(url, handler));
     }
 
+    /**
+     * 在AbstractClient构造函数中，打开客户端
+     * @throws Throwable
+     */
     @Override
     protected void doOpen() throws Throwable {
         NettyHelper.setNettyLoggerFactory();
@@ -82,6 +86,10 @@ public class NettyClient extends AbstractClient {
         });
     }
 
+    /**
+     * 在AbstractClient构造函数中，进行链接
+     * @throws Throwable
+     */
     @Override
     protected void doConnect() throws Throwable {
         long start = System.currentTimeMillis();

@@ -41,4 +41,13 @@
         <module>dubbo-rpc-redis</module>
         <module>dubbo-rpc-rest</module>
     </modules>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.fqgj</groupId>
+            <artifactId>system-log</artifactId>
+            <version>1.5-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 </project>

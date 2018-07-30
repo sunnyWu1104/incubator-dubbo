@@ -16,8 +16,11 @@
  */
 package com.alibaba.dubbo.rpc.proxy;
 
+import com.alibaba.dubbo.common.utils.StringUtils;
 import com.alibaba.dubbo.rpc.Invoker;
 import com.alibaba.dubbo.rpc.RpcInvocation;
+import com.fqgj.log.util.Constants;
+import org.apache.logging.log4j.ThreadContext;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -49,7 +52,18 @@ public class InvokerInvocationHandler implements InvocationHandler {
         if ("equals".equals(methodName) && parameterTypes.length == 1) {
             return invoker.equals(args[0]);
         }
-        return invoker.invoke(new RpcInvocation(method, args)).recreate();
+        RpcInvocation rpcInvocation = new RpcInvocation(method, args);
+        // 这里将cosumer端的traceId放入RpcInvocation
+        String traceId = ThreadContext.get("traceId");
+        if (StringUtils.isNotEmpty(traceId)){
+            rpcInvocation.setAttachment("traceId", traceId);
+        }
+        // 这里将cosumer端的spanId放入RpcInvocation
+        String spanId = ThreadContext.get("spanId");
+        if (StringUtils.isNotEmpty(spanId)){
+            rpcInvocation.setAttachment("spanId", spanId);
+        }
+        return invoker.invoke(rpcInvocation).recreate();
     }
 
 }

@@ -192,12 +192,17 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         return unexported;
     }
 
+    /**
+     * 实现服务的发布处理
+     */
     public synchronized void export() {
         if (provider != null) {
             if (export == null) {
+                // 是否暴露服务
                 export = provider.getExport();
             }
             if (delay == null) {
+                // 是否延迟暴露
                 delay = provider.getDelay();
             }
         }
@@ -206,6 +211,21 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         }
 
         if (delay != null && delay > 0) {
+            // TODO: 2018/7/26 旧版本实现如下：利用了守护线程（这个做法。。。。不理解为啥之前不用任务调用框架Executor处理）
+//            Thread thread = new Thread(new Runnable() {
+//                public void run() {
+//                    try {
+//                        Thread.sleep(delay);//延迟睡眠后调用doExport发布接口
+//                    } catch (Throwable e) {
+//                    }
+//                    doExport();//直接发布接口
+//                }
+//            });
+//            thread.setDaemon(true);//设置为守护线程
+//            thread.setName("DelayExportServiceThread");
+//            thread.start();
+
+            // 启动周期线程池（延迟周期启动），里面的阻塞队列是延迟队列
             delayExportExecutor.schedule(new Runnable() {
                 @Override
                 public void run() {
@@ -351,6 +371,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         unexported = true;
     }
 
+    /**
+     * 类似责任链模式，每个协议各司其职，逐个调用
+     */
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls() {
         List<URL> registryURLs = loadRegistries(true);
@@ -359,9 +382,15 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         }
     }
 
+    /**
+     * 获取协议
+     * @param protocolConfig
+     * @param registryURLs
+     */
     private void doExportUrlsFor1Protocol(ProtocolConfig protocolConfig, List<URL> registryURLs) {
         String name = protocolConfig.getName();
         if (name == null || name.length() == 0) {
+            // 默认使用了dubbo协议
             name = "dubbo";
         }
 
@@ -467,7 +496,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             contextPath = provider.getContextpath();
         }
 
+        // 获取服务发布地址
         String host = this.findConfigedHosts(protocolConfig, registryURLs, map);
+        // 获取服务发布端口号 通信协议未指明端口时，使用默认端口号，如果没有默认端口号，则随机生成
         Integer port = this.findConfigedPorts(protocolConfig, name, map);
         URL url = new URL(name, host, port, (contextPath == null || contextPath.length() == 0 ? "" : contextPath + "/") + path, map);
 
@@ -500,10 +531,12 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                         if (logger.isInfoEnabled()) {
                             logger.info("Register dubbo service " + interfaceClass.getName() + " url " + url + " to registry " + registryURL);
                         }
+                        // 通过proxyFactory对象生成接口实现类代理对象Invoker
                         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(Constants.EXPORT_KEY, url.toFullString()));
                         DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
-
+                        // 将Invoker对象封装到protocol协议对象中，同时开启socket服务监听端口，这里socket通信是使用netty框架来处理的
                         Exporter<?> exporter = protocol.export(wrapperInvoker);
+                        /// 添加对象到集合
                         exporters.add(exporter);
                     }
                 } else {

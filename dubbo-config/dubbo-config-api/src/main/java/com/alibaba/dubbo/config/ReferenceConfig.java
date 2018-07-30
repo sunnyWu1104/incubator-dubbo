@@ -76,6 +76,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
     // client type
     private String client;
     // url for peer-to-peer invocation
+    // 点对点用的url
     private String url;
     // method configs
     private List<MethodConfig> methods;
@@ -155,6 +156,10 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         return urls;
     }
 
+    /**
+     * 因为判空，所以这里对方法上锁
+     * @return
+     */
     public synchronized T get() {
         if (destroyed) {
             throw new IllegalStateException("Already destroyed!");
@@ -182,7 +187,11 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         ref = null;
     }
 
+    /**
+     * 初始化配置信息
+     */
     private void init() {
+        // 防止多次初始化
         if (initialized) {
             return;
         }
@@ -190,21 +199,26 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         if (interfaceName == null || interfaceName.length() == 0) {
             throw new IllegalStateException("<dubbo:reference interface=\"\" /> interface not allow null!");
         }
-        // get consumer's global configuration
-        checkDefault();
+        // get consumer's global configuration 获取消费者全局配置
+        checkDefault();// 查当前ConsumerConfig 是否存在，否则新建一个
         appendProperties(this);
+        // 是否使用泛型接口
         if (getGeneric() == null && getConsumer() != null) {
+            // 使用泛型接口
             setGeneric(getConsumer().getGeneric());
         }
         if (ProtocolUtils.isGeneric(getGeneric())) {
+            // 如果使用了泛型接口，设置泛型接口
             interfaceClass = GenericService.class;
         } else {
+            // 否则设置设置指定的interfaceName为泛型接口
             try {
                 interfaceClass = Class.forName(interfaceName, true, Thread.currentThread()
                         .getContextClassLoader());
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e.getMessage(), e);
             }
+            // 检测标签配置中的方法在接口中是否存在
             checkInterfaceAndMethods(interfaceClass, methods);
         }
         String resolve = System.getProperty(interfaceName);
@@ -245,6 +259,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 }
             }
         }
+        // 再次检测ConsumerConfig配置
         if (consumer != null) {
             if (application == null) {
                 application = consumer.getApplication();
@@ -259,6 +274,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 monitor = consumer.getMonitor();
             }
         }
+        // 再次检测module配置
         if (module != null) {
             if (registries == null) {
                 registries = module.getRegistries();
@@ -267,6 +283,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 monitor = module.getMonitor();
             }
         }
+        // 再次检测application配置
         if (application != null) {
             if (registries == null) {
                 registries = application.getRegistries();
@@ -275,13 +292,16 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 monitor = application.getMonitor();
             }
         }
+        // 检测application
         checkApplication();
         checkStubAndMock(interfaceClass);
         Map<String, String> map = new HashMap<String, String>();
         Map<Object, Object> attributes = new HashMap<Object, Object>();
+        // 设置map版本，时间，进程号 等属性值
         map.put(Constants.SIDE_KEY, Constants.CONSUMER_SIDE);
         map.put(Constants.DUBBO_VERSION_KEY, Version.getVersion());
         map.put(Constants.TIMESTAMP_KEY, String.valueOf(System.currentTimeMillis()));
+        // 设置pid值
         if (ConfigUtils.getPid() > 0) {
             map.put(Constants.PID_KEY, String.valueOf(ConfigUtils.getPid()));
         }
@@ -300,9 +320,13 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             }
         }
         map.put(Constants.INTERFACE_KEY, interfaceName);
+        // 设置application中属性值到map中
         appendParameters(map, application);
+        // 设置module中属性值到map中
         appendParameters(map, module);
+        // 设置consumer中属性值到map中
         appendParameters(map, consumer, Constants.DEFAULT_KEY);
+        // 设置当前标签bean属性值到map中
         appendParameters(map, this);
         String prefix = StringUtils.getServiceKey(map);
         if (methods != null && !methods.isEmpty()) {
@@ -328,8 +352,9 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         }
         map.put(Constants.REGISTER_IP_KEY, hostToRegistry);
 
-        //attributes are stored by system context.
+        // attributes通过系统context进行存储
         StaticContext.getSystemContext().putAll(attributes);
+        // 根据map中的属性创建接口的代理对象，map中保存了application，module，consumer，reference配置信息，创建代理对象
         ref = createProxy(map);
         ConsumerModel consumerModel = new ConsumerModel(getUniqueServiceName(), this, ref, interfaceClass.getMethods());
         ApplicationModel.initConsumerModel(getUniqueServiceName(), consumerModel);
@@ -337,13 +362,15 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
     private T createProxy(Map<String, String> map) {
+        // 根据map中的属性值生成URL对象
         URL tmpUrl = new URL("temp", "localhost", 0, map);
         final boolean isJvmRefer;
         if (isInjvm() == null) {
+            // 指定URL的情况下，不做本地引用
             if (url != null && url.length() > 0) { // if a url is specified, don't do local reference
                 isJvmRefer = false;
             } else if (InjvmProtocol.getInjvmProtocol().isInjvmRefer(tmpUrl)) {
-                // by default, reference local service if there is
+                // by default, reference local service if there is  默认情况下如果本地有服务暴露，则引用本地服务
                 isJvmRefer = true;
             } else {
                 isJvmRefer = false;
@@ -359,6 +386,8 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 logger.info("Using injvm service " + interfaceClass.getName());
             }
         } else {
+            // 判断当前客户端是否是点对点直连，直连会跳过注册中心
+            // 直连或者注册连接的url都会存储在urls中
             if (url != null && url.length() > 0) { // user specified URL, could be peer-to-peer address, or register center's address.
                 String[] us = Constants.SEMICOLON_SPLIT_PATTERN.split(url);
                 if (us != null && us.length > 0) {
@@ -391,8 +420,10 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             }
 
             if (urls.size() == 1) {
+                // 只有一个注册服务器时，生成客户端的代理invoker
                 invoker = refprotocol.refer(interfaceClass, urls.get(0));
             } else {
+                // 当有多个注册服务器时，生成多个客户端代理
                 List<Invoker<?>> invokers = new ArrayList<Invoker<?>>();
                 URL registryURL = null;
                 for (URL url : urls) {

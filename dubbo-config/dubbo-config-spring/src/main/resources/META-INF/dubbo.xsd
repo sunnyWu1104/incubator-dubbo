@@ -5,6 +5,8 @@
             xmlns="http://dubbo.apache.org/schema/dubbo"
             targetNamespace="http://dubbo.apache.org/schema/dubbo">
 
+    <!--设计你要的xml配置格式-->
+
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace"/>
     <xsd:import namespace="http://www.springframework.org/schema/beans"/>
     <xsd:import namespace="http://www.springframework.org/schema/tool"/>

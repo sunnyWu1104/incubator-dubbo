@@ -156,6 +156,15 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         }
     }
 
+    /**
+     * 返回注册到服务发布中心(zookeeper)的地址
+     *
+     * registry://192.168.14.46:2181/com.alibaba.dubbo.registry.RegistryService?application=demo-provider&dubbo=2.0.0&pid=524&registry=zookeeper×tamp=1498806201853
+     * registry://192.168.14.47:2181/com.alibaba.dubbo.registry.RegistryService?application=demo-provider&dubbo=2.0.0&pid=524&registry=zookeeper×tamp=1498806201986
+     *
+     * @param provider
+     * @return
+     */
     protected List<URL> loadRegistries(boolean provider) {
         checkRegistry();
         List<URL> registryList = new ArrayList<URL>();

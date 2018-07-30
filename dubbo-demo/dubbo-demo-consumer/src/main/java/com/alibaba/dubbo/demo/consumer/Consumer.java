@@ -17,6 +17,8 @@
 package com.alibaba.dubbo.demo.consumer;
 
 import com.alibaba.dubbo.demo.DemoService;
+import com.fqgj.log.util.Constants;
+import org.apache.logging.log4j.ThreadContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 public class Consumer {
@@ -29,6 +31,8 @@ public class Consumer {
         context.start();
         DemoService demoService = (DemoService) context.getBean("demoService"); // get remote service proxy
 
+        ThreadContext.put(Constants.TRACE_ID, "123123");
+        ThreadContext.put(Constants.SPAN_ID, "456456");
         while (true) {
             try {
                 Thread.sleep(1000);

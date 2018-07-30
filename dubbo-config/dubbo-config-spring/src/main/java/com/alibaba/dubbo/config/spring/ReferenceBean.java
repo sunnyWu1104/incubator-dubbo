@@ -61,6 +61,14 @@ public class ReferenceBean<T> extends ReferenceConfig<T> implements FactoryBean,
         SpringExtensionFactory.addApplicationContext(applicationContext);
     }
 
+    /**
+     * 实现了FactoryBean<T>接口的Bean，当根据该Bean的Id从BeanFactory中获取的实际上是FactoryBean的getObject()返回的对象。
+     * 也就是说我们在使用dubbo框架获取客户端对象的时候 ，其实是执行了getObject方法返回的对象。
+     *
+     * 在spring容器中根据id找对象
+     * @return
+     * @throws Exception
+     */
     @Override
     public Object getObject() throws Exception {
         return get();
@@ -172,6 +180,7 @@ public class ReferenceBean<T> extends ReferenceConfig<T> implements FactoryBean,
         if (b == null && getConsumer() != null) {
             b = getConsumer().isInit();
         }
+        // 是否容器启动加载时，立即初始化，默认是不立刻初始化处理，可以通过在dubbo:reference标签里面配置init=true来设置
         if (b != null && b.booleanValue()) {
             getObject();
         }

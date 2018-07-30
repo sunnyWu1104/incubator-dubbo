@@ -31,6 +31,9 @@ import org.springframework.beans.factory.xml.NamespaceHandlerSupport;
 /**
  * DubboNamespaceHandler
  *
+ * 自定义NamespaceHandler,完成从xml中读取配置内容，并转换成Spring Bean进行注册
+ * Spring容器会默认加载classpath/META-INF下的spring.handlers和spring.schemas两个文件，来加载xsd和对应的NamespaceHandler,所以dubbo-config-spring包下的META-INF目录下也有这两个文件
+ *
  * @export
  */
 public class DubboNamespaceHandler extends NamespaceHandlerSupport {
@@ -39,6 +42,15 @@ public class DubboNamespaceHandler extends NamespaceHandlerSupport {
         Version.checkDuplicate(DubboNamespaceHandler.class);
     }
 
+    /**
+     * xml标签解析
+     *
+     * 使用的是父抽象类NamespaceHandlerSupport的默认实现，
+     * 第一个参数是elementName，即元素名称，即告诉Spring你要解析哪个标签，
+     * 第二个参数是BeanDefinitionParser的实现类，BeanDefinitionParser是Spring用来将xml元素转换成BeanDefinition对象的接口。
+     * dubbo的DubboBeanDefinitionParser类就实现了这个接口，负责将标签转换成bean定义对象BeanDefinition。
+     *
+     */
     @Override
     public void init() {
         registerBeanDefinitionParser("application", new DubboBeanDefinitionParser(ApplicationConfig.class, true));
